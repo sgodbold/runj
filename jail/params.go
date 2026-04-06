@@ -114,7 +114,7 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 	}
 	iovec = append(iovec, allowSetHostname...)
 
-	allowRawSockets, err := boolIovec("allow.raw_sockets", c.AllowSetHostname)
+	allowRawSockets, err := boolIovec("allow.raw_sockets", c.AllowRawSockets)
 	if err != nil {
 		return nil, err
 	}
@@ -128,31 +128,31 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 
 	// TODO mounts
 
-	allowQuotas, err := boolIovec("allow.quotas", c.AllowChFlags)
+	allowQuotas, err := boolIovec("allow.quotas", c.AllowQuotas)
 	if err != nil {
 		return nil, err
 	}
 	iovec = append(iovec, allowQuotas...)
 
-	allowSocketAf, err := boolIovec("allow.socket_af", c.AllowChFlags)
+	allowSocketAf, err := boolIovec("allow.socket_af", c.AllowSocketAf)
 	if err != nil {
 		return nil, err
 	}
 	iovec = append(iovec, allowSocketAf...)
 
-	allowMlock, err := boolIovec("allow.mlock", c.AllowChFlags)
+	allowMlock, err := boolIovec("allow.mlock", c.AllowMlock)
 	if err != nil {
 		return nil, err
 	}
 	iovec = append(iovec, allowMlock...)
 
-	allowReservedPorts, err := boolIovec("allow.reserved_ports", c.AllowChFlags)
+	allowReservedPorts, err := boolIovec("allow.reserved_ports", c.AllowReservedPorts)
 	if err != nil {
 		return nil, err
 	}
 	iovec = append(iovec, allowReservedPorts...)
 
-	allowSuser, err := boolIovec("allow.suser", c.AllowChFlags)
+	allowSuser, err := boolIovec("allow.suser", c.AllowSuser)
 	if err != nil {
 		return nil, err
 	}
