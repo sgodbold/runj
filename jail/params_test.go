@@ -144,6 +144,8 @@ func TestCreateParamsIovec(t *testing.T) {
 	}, {
 		name: "allow-all-flags",
 		config: CreateParams{
+			Name:               "allowflags",
+			Root:               "/tmp/test/allow/flags",
 			AllowSetHostname:   true,
 			AllowRawSockets:    true,
 			AllowChFlags:       true,
@@ -154,6 +156,14 @@ func TestCreateParamsIovec(t *testing.T) {
 			AllowSuser:         true,
 		},
 		iovec: []fakeIovec{
+			{
+				name: "name\x00",
+				val:  []byte("allowflags\x00"),
+			},
+			{
+				name: "path\x00",
+				val:  []byte("/tmp/test/allow/flags\x00"),
+			},
 			{
 				name: "allow.set_hostname\x00",
 			},
