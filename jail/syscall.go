@@ -166,14 +166,6 @@ func netIPIovec(name string, value []netip.Addr) ([]syscall.Iovec, error) {
 	return makeIovec(n, &bytes[0], len(bytes)), nil
 }
 
-func nilIovec(name string) ([]syscall.Iovec, error) {
-	n, err := syscall.ByteSliceFromString(name)
-	if err != nil {
-		return nil, err
-	}
-	return makeIovec(n, nil, 0), nil
-}
-
 func boolIovec(name string, value bool) ([]syscall.Iovec, error) {
 	if value {
 		return nilIovec(name)
@@ -187,6 +179,14 @@ func boolIovec(name string, value bool) ([]syscall.Iovec, error) {
 	parts[len(parts)-1] = "no" + parts[len(parts)-1]
 
 	return nilIovec(strings.Join(parts, "."))
+}
+
+func nilIovec(name string) ([]syscall.Iovec, error) {
+	n, err := syscall.ByteSliceFromString(name)
+	if err != nil {
+		return nil, err
+	}
+	return makeIovec(n, nil, 0), nil
 }
 
 func makeIovec(name []byte, value *byte, size int) []syscall.Iovec {

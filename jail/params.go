@@ -18,11 +18,10 @@ type CreateParams struct {
 	// Deprecated: not used
 	VNetInterface []string
 
-	AllowSetHostname bool
-	AllowRawSockets  bool
-	AllowChFlags     bool
-	// TODO
-	//AllowMouint
+	AllowSetHostname   bool
+	AllowRawSockets    bool
+	AllowChFlags       bool
+	AllowMount         []string
 	AllowQuotas        bool
 	AllowSocketAf      bool
 	AllowMlock         bool
@@ -126,7 +125,15 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 	}
 	iovec = append(iovec, allowChFlags...)
 
-	// TODO mounts
+	if len(c.AllowMount) > 0 {
+		for _, m := range c.AllowMount {
+			mAllow, err := boolIovec("allow.mount."+m, true)
+			if err != nil {
+				return nil, err
+			}
+			iovec = append(iovec, mAllow...)
+		}
+	}
 
 	allowQuotas, err := boolIovec("allow.quotas", c.AllowQuotas)
 	if err != nil {

@@ -177,8 +177,7 @@ written`)
 				jailcfg.AllowSetHostname = ociConfig.FreeBSD.Jail.Allow.SetHostname
 				jailcfg.AllowRawSockets = ociConfig.FreeBSD.Jail.Allow.RawSockets
 				jailcfg.AllowChFlags = ociConfig.FreeBSD.Jail.Allow.Chflags
-				// TODO
-				// jailcfg.AllowMount
+				jailcfg.AllowMount = ociConfig.FreeBSD.Jail.Allow.Mount
 				jailcfg.AllowQuotas = ociConfig.FreeBSD.Jail.Allow.Quotas
 				jailcfg.AllowSocketAf = ociConfig.FreeBSD.Jail.Allow.SocketAf
 				jailcfg.AllowMlock = ociConfig.FreeBSD.Jail.Allow.Mlock
