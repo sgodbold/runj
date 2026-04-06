@@ -172,6 +172,17 @@ written`)
 			jailcfg.IP4Addr = ociConfig.FreeBSD.Jail.Ip4Addr
 			jailcfg.VNet = string(ociConfig.FreeBSD.Jail.Vnet)
 			jailcfg.VNetInterface = ociConfig.FreeBSD.Jail.VnetInterfaces
+
+			jailcfg.AllowSetHostname = ociConfig.FreeBSD.Jail.Allow.SetHostname
+			jailcfg.AllowRawSockets = ociConfig.FreeBSD.Jail.Allow.RawSockets
+			jailcfg.AllowChFlags = ociConfig.FreeBSD.Jail.Allow.Chflags
+			// TODO
+			// jailcfg.AllowMount
+			jailcfg.AllowQuotas = ociConfig.FreeBSD.Jail.Allow.Quotas
+			jailcfg.AllowSocketAf = ociConfig.FreeBSD.Jail.Allow.SocketAf
+			jailcfg.AllowMlock = ociConfig.FreeBSD.Jail.Allow.Mlock
+			jailcfg.AllowReservedPorts = ociConfig.FreeBSD.Jail.Allow.ReservedPorts
+			jailcfg.AllowSuser = ociConfig.FreeBSD.Jail.Allow.Suser
 		}
 
 		j, err := jail.Create(jailcfg)

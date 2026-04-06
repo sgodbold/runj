@@ -17,6 +17,17 @@ type CreateParams struct {
 	// VNetInterface
 	// Deprecated: not used
 	VNetInterface []string
+
+	AllowSetHostname bool
+	AllowRawSockets  bool
+	AllowChFlags     bool
+	// TODO
+	//AllowMouint
+	AllowQuotas        bool
+	AllowSocketAf      bool
+	AllowMlock         bool
+	AllowReservedPorts bool
+	AllowSuser         bool
 }
 
 func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
@@ -96,6 +107,12 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 		}
 		iovec = append(iovec, ip4Addrio...)
 	}
+
+	allowChFlags, err := boolIovec("allow.chflags", c.AllowChFlags)
+	if err != nil {
+		return nil, err
+	}
+	iovec = append(iovec, allowChFlags...)
 
 	persist, err := nilIovec("persist")
 	if err != nil {

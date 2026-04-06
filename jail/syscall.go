@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/netip"
 	"strconv"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -171,6 +172,21 @@ func nilIovec(name string) ([]syscall.Iovec, error) {
 		return nil, err
 	}
 	return makeIovec(n, nil, 0), nil
+}
+
+func boolIovec(name string, value bool) ([]syscall.Iovec, error) {
+	if value {
+		return nilIovec(name)
+	}
+
+	parts := strings.Split(name, ".")
+	if len(parts) == 0 {
+		return nilIovec("no" + name)
+	}
+
+	parts[len(parts)-1] = "no" + parts[len(parts)-1]
+
+	return nilIovec(strings.Join(parts, "."))
 }
 
 func makeIovec(name []byte, value *byte, size int) []syscall.Iovec {

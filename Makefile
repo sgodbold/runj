@@ -6,15 +6,15 @@ binaries: runj runj-entrypoint containerd-shim-runj-v1
 
 runj: bin/runj
 bin/runj: $(SOURCES) go.mod go.sum VERSION REV_OVERRIDE
-	go build -o bin/runj ./cmd/runj
+	GOOS=freebsd go build -o bin/runj ./cmd/runj
 
 runj-entrypoint: bin/runj-entrypoint
 bin/runj-entrypoint: $(SOURCES) go.mod go.sum
-	go build -o bin/runj-entrypoint ./cmd/runj-entrypoint
+	GOOS=freebsd go build -o bin/runj-entrypoint ./cmd/runj-entrypoint
 
 containerd-shim-runj-v1: bin/containerd-shim-runj-v1
 bin/containerd-shim-runj-v1: $(SOURCES) go.mod go.sum
-	go build -o bin/containerd-shim-runj-v1 ./cmd/containerd-shim-runj-v1
+	GOOS=freebsd go build -o bin/containerd-shim-runj-v1 ./cmd/containerd-shim-runj-v1
 
 .PHONY: install
 install: runj containerd-shim-runj-v1
