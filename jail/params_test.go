@@ -142,14 +142,14 @@ func TestCreateParamsIovec(t *testing.T) {
 			val:  []byte{2, 0, 0, 0},
 		}}, defaultsIovec()...),
 	}, {
-		name: "allow-all-flags",
+		name: "allow-params",
 		config: CreateParams{
-			Name:               "allowflags",
-			Root:               "/tmp/test/allow/flags",
+			Name:               "allowparams",
+			Root:               "/tmp/test/allow/params",
 			AllowSetHostname:   true,
 			AllowRawSockets:    true,
 			AllowChFlags:       true,
-			AllowMount:         []string{"nullfs", "tmpfs"},
+			AllowMount:         []string{"nullfs", "tmpfs", "noprocfs"},
 			AllowQuotas:        true,
 			AllowSocketAf:      true,
 			AllowMlock:         true,
@@ -159,11 +159,11 @@ func TestCreateParamsIovec(t *testing.T) {
 		iovec: []fakeIovec{
 			{
 				name: "name\x00",
-				val:  []byte("allowflags\x00"),
+				val:  []byte("allowparams\x00"),
 			},
 			{
 				name: "path\x00",
-				val:  []byte("/tmp/test/allow/flags\x00"),
+				val:  []byte("/tmp/test/allow/params\x00"),
 			},
 			{
 				name: "allow.set_hostname\x00",
@@ -179,6 +179,9 @@ func TestCreateParamsIovec(t *testing.T) {
 			},
 			{
 				name: "allow.mount.tmpfs\x00",
+			},
+			{
+				name: "allow.mount.noprocfs\x00",
 			},
 			{
 				name: "allow.quotas\x00",

@@ -127,7 +127,7 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 
 	if len(c.AllowMount) > 0 {
 		for _, m := range c.AllowMount {
-			mAllow, err := boolIovec("allow.mount."+m, true)
+			mAllow, err := nilIovec("allow.mount." + m)
 			if err != nil {
 				return nil, err
 			}
