@@ -142,6 +142,47 @@ func TestCreateParamsIovec(t *testing.T) {
 			val:  []byte{2, 0, 0, 0},
 		}}, defaultsIovec()...),
 	}, {
+		name: "allow-all-flags",
+		config: CreateParams{
+			AllowSetHostname:   true,
+			AllowRawSockets:    true,
+			AllowChFlags:       true,
+			AllowQuotas:        true,
+			AllowSocketAf:      true,
+			AllowMlock:         true,
+			AllowReservedPorts: true,
+			AllowSuser:         true,
+		},
+		iovec: []fakeIovec{
+			{
+				name: "allow.set_hostname\x00",
+			},
+			{
+				name: "allow.raw_sockets\x00",
+			},
+			{
+				name: "allow.chflags\x00",
+			},
+			{
+				name: "allow.quotas\x00",
+			},
+			{
+				name: "allow.socket_af\x00",
+			},
+			{
+				name: "allow.mlock\x00",
+			},
+			{
+				name: "allow.reserved_ports\x00",
+			},
+			{
+				name: "allow.suser\x00",
+			},
+			{
+				name: "persist\x00",
+			},
+		},
+	}, {
 		name: "ip4.addr-invalid",
 		config: CreateParams{
 			Name:    "ip4.addr-invalid",
