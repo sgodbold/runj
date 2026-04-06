@@ -149,6 +149,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			AllowSetHostname:   true,
 			AllowRawSockets:    true,
 			AllowChFlags:       true,
+			AllowMount:         []string{"nullfs", "tmpfs"},
 			AllowQuotas:        true,
 			AllowSocketAf:      true,
 			AllowMlock:         true,
@@ -172,6 +173,12 @@ func TestCreateParamsIovec(t *testing.T) {
 			},
 			{
 				name: "allow.chflags\x00",
+			},
+			{
+				name: "allow.mount.nullfs\x00",
+			},
+			{
+				name: "allow.mount.tmpfs\x00",
 			},
 			{
 				name: "allow.quotas\x00",
