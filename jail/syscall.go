@@ -171,14 +171,11 @@ func boolIovec(name string, value bool) ([]syscall.Iovec, error) {
 		return nilIovec(name)
 	}
 
-	parts := strings.Split(name, ".")
-	if len(parts) == 0 {
-		return nilIovec("no" + name)
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		return nilIovec(name[:i+1] + "no" + name[i+1:])
 	}
 
-	parts[len(parts)-1] = "no" + parts[len(parts)-1]
-
-	return nilIovec(strings.Join(parts, "."))
+	return nilIovec("no" + name)
 }
 
 func nilIovec(name string) ([]syscall.Iovec, error) {
