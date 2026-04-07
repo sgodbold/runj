@@ -174,15 +174,17 @@ written`)
 			jailcfg.VNetInterface = ociConfig.FreeBSD.Jail.VnetInterfaces
 
 			if ociConfig.FreeBSD.Jail.Allow != nil {
-				jailcfg.AllowSetHostname = ociConfig.FreeBSD.Jail.Allow.SetHostname
-				jailcfg.AllowRawSockets = ociConfig.FreeBSD.Jail.Allow.RawSockets
-				jailcfg.AllowChFlags = ociConfig.FreeBSD.Jail.Allow.Chflags
-				jailcfg.AllowMount = ociConfig.FreeBSD.Jail.Allow.Mount
-				jailcfg.AllowQuotas = ociConfig.FreeBSD.Jail.Allow.Quotas
-				jailcfg.AllowSocketAf = ociConfig.FreeBSD.Jail.Allow.SocketAf
-				jailcfg.AllowMlock = ociConfig.FreeBSD.Jail.Allow.Mlock
-				jailcfg.AllowReservedPorts = ociConfig.FreeBSD.Jail.Allow.ReservedPorts
-				jailcfg.AllowSuser = ociConfig.FreeBSD.Jail.Allow.Suser
+				jailcfg.Allow = &jail.CreateAllowParams{
+					AllowSetHostname:   ociConfig.FreeBSD.Jail.Allow.SetHostname,
+					AllowRawSockets:    ociConfig.FreeBSD.Jail.Allow.RawSockets,
+					AllowChFlags:       ociConfig.FreeBSD.Jail.Allow.Chflags,
+					AllowMount:         ociConfig.FreeBSD.Jail.Allow.Mount,
+					AllowQuotas:        ociConfig.FreeBSD.Jail.Allow.Quotas,
+					AllowSocketAf:      ociConfig.FreeBSD.Jail.Allow.SocketAf,
+					AllowMlock:         ociConfig.FreeBSD.Jail.Allow.Mlock,
+					AllowReservedPorts: ociConfig.FreeBSD.Jail.Allow.ReservedPorts,
+					AllowSuser:         ociConfig.FreeBSD.Jail.Allow.Suser,
+				}
 			}
 		}
 

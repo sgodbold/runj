@@ -27,13 +27,13 @@ func TestCreateParamsIovec(t *testing.T) {
 			Name: "basic",
 			Root: "/tmp/test/basic/root",
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("basic\x00"),
 		}, {
 			name: "path\x00",
 			val:  []byte("/tmp/test/basic/root\x00"),
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "hostname",
 		config: CreateParams{
@@ -41,7 +41,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			Root:     "/tmp/test/hostname/root",
 			Hostname: "test.hostname.example.com",
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("hostname\x00"),
 		}, {
@@ -50,7 +50,7 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "host.hostname\x00",
 			val:  []byte("test.hostname.example.com\x00"),
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "ip4-network",
 		config: CreateParams{
@@ -59,7 +59,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			IP4:     "new",
 			IP4Addr: []string{"127.0.0.1", "10.2.2.2", "3.3.3.3"},
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("network\x00"),
 		}, {
@@ -71,7 +71,7 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4.addr\x00",
 			val:  []byte{127, 0, 0, 1, 10, 2, 2, 2, 3, 3, 3, 3},
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "ip4-inherit",
 		config: CreateParams{
@@ -79,7 +79,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			Root: "/tmp/test/network/root",
 			IP4:  "inherit",
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("network\x00"),
 		}, {
@@ -88,7 +88,7 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4\x00",
 			val:  []byte{2, 0, 0, 0},
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "ip4-disable",
 		config: CreateParams{
@@ -96,7 +96,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			Root: "/tmp/test/network/root",
 			IP4:  "disable",
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("network\x00"),
 		}, {
@@ -105,7 +105,7 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4\x00",
 			val:  []byte{0, 0, 0, 0},
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "vnet",
 		config: CreateParams{
@@ -114,7 +114,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			VNet:          "new",
 			VNetInterface: []string{"epair0b", "epair1b"},
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("vnet\x00"),
 		}, {
@@ -123,7 +123,7 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "vnet\x00",
 			val:  []byte{1, 0, 0, 0},
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "vnet-inherit",
 		config: CreateParams{
@@ -131,7 +131,7 @@ func TestCreateParamsIovec(t *testing.T) {
 			Root: "/tmp/test/vnet/root",
 			VNet: "inherit",
 		},
-		iovec: append([]fakeIovec{{
+		iovec: []fakeIovec{{
 			name: "name\x00",
 			val:  []byte("vnet\x00"),
 		}, {
@@ -140,21 +140,23 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "vnet\x00",
 			val:  []byte{2, 0, 0, 0},
-		}}, defaultsIovec()...),
+		}},
 	}, {
 		name: "allow-params",
 		config: CreateParams{
-			Name:               "allowparams",
-			Root:               "/tmp/test/allow/params",
-			AllowSetHostname:   true,
-			AllowRawSockets:    true,
-			AllowChFlags:       true,
-			AllowMount:         []string{"nullfs", "tmpfs", "noprocfs"},
-			AllowQuotas:        true,
-			AllowSocketAf:      true,
-			AllowMlock:         true,
-			AllowReservedPorts: true,
-			AllowSuser:         true,
+			Name: "allowparams",
+			Root: "/tmp/test/allow/params",
+			Allow: &CreateAllowParams{
+				AllowSetHostname:   true,
+				AllowRawSockets:    true,
+				AllowChFlags:       true,
+				AllowMount:         []string{"nullfs", "tmpfs", "noprocfs"},
+				AllowQuotas:        true,
+				AllowSocketAf:      true,
+				AllowMlock:         true,
+				AllowReservedPorts: true,
+				AllowSuser:         true,
+			},
 		},
 		iovec: []fakeIovec{
 			{
@@ -164,6 +166,9 @@ func TestCreateParamsIovec(t *testing.T) {
 			{
 				name: "path\x00",
 				val:  []byte("/tmp/test/allow/params\x00"),
+			},
+			{
+				name: "persist\x00",
 			},
 			{
 				name: "allow.set_hostname\x00",
@@ -197,9 +202,6 @@ func TestCreateParamsIovec(t *testing.T) {
 			},
 			{
 				name: "allow.suser\x00",
-			},
-			{
-				name: "persist\x00",
 			},
 		},
 	}, {
@@ -278,37 +280,4 @@ func toSingleFakeIovec(actual []syscall.Iovec) (*fakeIovec, error) {
 		name: string(n),
 		val:  v,
 	}, nil
-}
-
-func defaultsIovec() []fakeIovec {
-	defaults := []fakeIovec{
-		{
-			name: "allow.noset_hostname\x00",
-		},
-		{
-			name: "allow.noraw_sockets\x00",
-		},
-		{
-			name: "allow.nochflags\x00",
-		},
-		{
-			name: "allow.noquotas\x00",
-		},
-		{
-			name: "allow.nosocket_af\x00",
-		},
-		{
-			name: "allow.nomlock\x00",
-		},
-		{
-			name: "allow.noreserved_ports\x00",
-		},
-		{
-			name: "allow.nosuser\x00",
-		},
-		{
-			name: "persist\x00",
-		}}
-
-	return defaults
 }

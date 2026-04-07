@@ -18,6 +18,10 @@ type CreateParams struct {
 	// Deprecated: not used
 	VNetInterface []string
 
+	Allow *CreateAllowParams
+}
+
+type CreateAllowParams struct {
 	AllowSetHostname   bool
 	AllowRawSockets    bool
 	AllowChFlags       bool
@@ -107,69 +111,71 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 		iovec = append(iovec, ip4Addrio...)
 	}
 
-	allowSetHostname, err := boolIovec("allow.set_hostname", c.AllowSetHostname)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowSetHostname...)
-
-	allowRawSockets, err := boolIovec("allow.raw_sockets", c.AllowRawSockets)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowRawSockets...)
-
-	allowChFlags, err := boolIovec("allow.chflags", c.AllowChFlags)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowChFlags...)
-
-	if len(c.AllowMount) > 0 {
-		for _, m := range c.AllowMount {
-			mAllow, err := nilIovec("allow.mount." + m)
-			if err != nil {
-				return nil, err
-			}
-			iovec = append(iovec, mAllow...)
-		}
-	}
-
-	allowQuotas, err := boolIovec("allow.quotas", c.AllowQuotas)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowQuotas...)
-
-	allowSocketAf, err := boolIovec("allow.socket_af", c.AllowSocketAf)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowSocketAf...)
-
-	allowMlock, err := boolIovec("allow.mlock", c.AllowMlock)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowMlock...)
-
-	allowReservedPorts, err := boolIovec("allow.reserved_ports", c.AllowReservedPorts)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowReservedPorts...)
-
-	allowSuser, err := boolIovec("allow.suser", c.AllowSuser)
-	if err != nil {
-		return nil, err
-	}
-	iovec = append(iovec, allowSuser...)
-
 	persist, err := nilIovec("persist")
 	if err != nil {
 		return nil, err
 	}
 	iovec = append(iovec, persist...)
+
+	if c.Allow != nil {
+		allowSetHostname, err := boolIovec("allow.set_hostname", c.Allow.AllowSetHostname)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSetHostname...)
+
+		allowRawSockets, err := boolIovec("allow.raw_sockets", c.Allow.AllowRawSockets)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowRawSockets...)
+
+		allowChFlags, err := boolIovec("allow.chflags", c.Allow.AllowChFlags)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowChFlags...)
+
+		if len(c.Allow.AllowMount) > 0 {
+			for _, m := range c.Allow.AllowMount {
+				mAllow, err := nilIovec("allow.mount." + m)
+				if err != nil {
+					return nil, err
+				}
+				iovec = append(iovec, mAllow...)
+			}
+		}
+
+		allowQuotas, err := boolIovec("allow.quotas", c.Allow.AllowQuotas)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowQuotas...)
+
+		allowSocketAf, err := boolIovec("allow.socket_af", c.Allow.AllowSocketAf)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSocketAf...)
+
+		allowMlock, err := boolIovec("allow.mlock", c.Allow.AllowMlock)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowMlock...)
+
+		allowReservedPorts, err := boolIovec("allow.reserved_ports", c.Allow.AllowReservedPorts)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowReservedPorts...)
+
+		allowSuser, err := boolIovec("allow.suser", c.Allow.AllowSuser)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSuser...)
+	}
 
 	return iovec, nil
 }
