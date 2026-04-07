@@ -33,7 +33,11 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "path\x00",
 			val:  []byte("/tmp/test/basic/root\x00"),
-		}},
+		},
+			{
+				name: "persist\x00",
+			},
+		},
 	}, {
 		name: "hostname",
 		config: CreateParams{
@@ -50,6 +54,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "host.hostname\x00",
 			val:  []byte("test.hostname.example.com\x00"),
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "ip4-network",
@@ -71,6 +77,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4.addr\x00",
 			val:  []byte{127, 0, 0, 1, 10, 2, 2, 2, 3, 3, 3, 3},
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "ip4-inherit",
@@ -88,6 +96,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4\x00",
 			val:  []byte{2, 0, 0, 0},
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "ip4-disable",
@@ -105,6 +115,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "ip4\x00",
 			val:  []byte{0, 0, 0, 0},
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "vnet",
@@ -123,6 +135,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "vnet\x00",
 			val:  []byte{1, 0, 0, 0},
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "vnet-inherit",
@@ -140,6 +154,8 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "vnet\x00",
 			val:  []byte{2, 0, 0, 0},
+		}, {
+			name: "persist\x00",
 		}},
 	}, {
 		name: "allow-params",
@@ -152,58 +168,43 @@ func TestCreateParamsIovec(t *testing.T) {
 				AllowChFlags:       true,
 				AllowMount:         []string{"nullfs", "tmpfs", "noprocfs"},
 				AllowQuotas:        true,
-				AllowSocketAf:      true,
-				AllowMlock:         true,
-				AllowReservedPorts: true,
-				AllowSuser:         true,
+				AllowSocketAf:      false,
+				AllowMlock:         false,
+				AllowReservedPorts: false,
+				AllowSuser:         false,
 			},
 		},
-		iovec: []fakeIovec{
-			{
-				name: "name\x00",
-				val:  []byte("allowparams\x00"),
-			},
-			{
-				name: "path\x00",
-				val:  []byte("/tmp/test/allow/params\x00"),
-			},
-			{
-				name: "persist\x00",
-			},
-			{
-				name: "allow.set_hostname\x00",
-			},
-			{
-				name: "allow.raw_sockets\x00",
-			},
-			{
-				name: "allow.chflags\x00",
-			},
-			{
-				name: "allow.mount.nullfs\x00",
-			},
-			{
-				name: "allow.mount.tmpfs\x00",
-			},
-			{
-				name: "allow.mount.noprocfs\x00",
-			},
-			{
-				name: "allow.quotas\x00",
-			},
-			{
-				name: "allow.socket_af\x00",
-			},
-			{
-				name: "allow.mlock\x00",
-			},
-			{
-				name: "allow.reserved_ports\x00",
-			},
-			{
-				name: "allow.suser\x00",
-			},
-		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("allowparams\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/allow/params\x00"),
+		}, {
+			name: "persist\x00",
+		}, {
+			name: "allow.set_hostname\x00",
+		}, {
+			name: "allow.raw_sockets\x00",
+		}, {
+			name: "allow.chflags\x00",
+		}, {
+			name: "allow.mount.nullfs\x00",
+		}, {
+			name: "allow.mount.tmpfs\x00",
+		}, {
+			name: "allow.mount.noprocfs\x00",
+		}, {
+			name: "allow.quotas\x00",
+		}, {
+			name: "allow.nosocket_af\x00",
+		}, {
+			name: "allow.nomlock\x00",
+		}, {
+			name: "allow.noreserved_ports\x00",
+		}, {
+			name: "allow.nosuser\x00",
+		}},
 	}, {
 		name: "ip4.addr-invalid",
 		config: CreateParams{
