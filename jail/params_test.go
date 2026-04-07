@@ -33,11 +33,9 @@ func TestCreateParamsIovec(t *testing.T) {
 		}, {
 			name: "path\x00",
 			val:  []byte("/tmp/test/basic/root\x00"),
-		},
-			{
-				name: "persist\x00",
-			},
-		},
+		}, {
+			name: "persist\x00",
+		}},
 	}, {
 		name: "hostname",
 		config: CreateParams{

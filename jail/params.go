@@ -17,8 +17,7 @@ type CreateParams struct {
 	// VNetInterface
 	// Deprecated: not used
 	VNetInterface []string
-
-	Allow *CreateAllowParams
+	Allow         *CreateAllowParams
 }
 
 type CreateAllowParams struct {
@@ -138,11 +137,11 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 
 		if len(c.Allow.AllowMount) > 0 {
 			for _, m := range c.Allow.AllowMount {
-				mAllow, err := nilIovec("allow.mount." + m)
+				allowMount, err := nilIovec("allow.mount." + m)
 				if err != nil {
 					return nil, err
 				}
-				iovec = append(iovec, mAllow...)
+				iovec = append(iovec, allowMount...)
 			}
 		}
 
