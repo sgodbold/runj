@@ -27,6 +27,19 @@ type CreateParams struct {
 	SysVMsg       string
 	SysVSem       string
 	SysVShm       string
+	Allow         *CreateAllowParams
+}
+
+type CreateAllowParams struct {
+	AllowSetHostname   bool
+	AllowRawSockets    bool
+	AllowChFlags       bool
+	AllowMount         []string
+	AllowQuotas        bool
+	AllowSocketAf      bool
+	AllowMlock         bool
+	AllowReservedPorts bool
+	AllowSuser         bool
 }
 
 func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
@@ -253,6 +266,66 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 		return nil, err
 	}
 	iovec = append(iovec, persist...)
+
+	if c.Allow != nil {
+		allowSetHostname, err := boolIovec("allow.set_hostname", c.Allow.AllowSetHostname)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSetHostname...)
+
+		allowRawSockets, err := boolIovec("allow.raw_sockets", c.Allow.AllowRawSockets)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowRawSockets...)
+
+		allowChFlags, err := boolIovec("allow.chflags", c.Allow.AllowChFlags)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowChFlags...)
+
+		if len(c.Allow.AllowMount) > 0 {
+			for _, m := range c.Allow.AllowMount {
+				allowMount, err := nilIovec("allow.mount." + m)
+				if err != nil {
+					return nil, err
+				}
+				iovec = append(iovec, allowMount...)
+			}
+		}
+
+		allowQuotas, err := boolIovec("allow.quotas", c.Allow.AllowQuotas)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowQuotas...)
+
+		allowSocketAf, err := boolIovec("allow.socket_af", c.Allow.AllowSocketAf)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSocketAf...)
+
+		allowMlock, err := boolIovec("allow.mlock", c.Allow.AllowMlock)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowMlock...)
+
+		allowReservedPorts, err := boolIovec("allow.reserved_ports", c.Allow.AllowReservedPorts)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowReservedPorts...)
+
+		allowSuser, err := boolIovec("allow.suser", c.Allow.AllowSuser)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, allowSuser...)
+	}
 
 	return iovec, nil
 }

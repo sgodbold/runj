@@ -184,6 +184,20 @@ written`)
 			jailcfg.SysVMsg = string(ociConfig.FreeBSD.Jail.SysVMsg)
 			jailcfg.SysVSem = string(ociConfig.FreeBSD.Jail.SysVSem)
 			jailcfg.SysVShm = string(ociConfig.FreeBSD.Jail.SysVShm)
+
+			if ociConfig.FreeBSD.Jail.Allow != nil {
+				jailcfg.Allow = &jail.CreateAllowParams{
+					AllowSetHostname:   ociConfig.FreeBSD.Jail.Allow.SetHostname,
+					AllowRawSockets:    ociConfig.FreeBSD.Jail.Allow.RawSockets,
+					AllowChFlags:       ociConfig.FreeBSD.Jail.Allow.Chflags,
+					AllowMount:         ociConfig.FreeBSD.Jail.Allow.Mount,
+					AllowQuotas:        ociConfig.FreeBSD.Jail.Allow.Quotas,
+					AllowSocketAf:      ociConfig.FreeBSD.Jail.Allow.SocketAf,
+					AllowMlock:         ociConfig.FreeBSD.Jail.Allow.Mlock,
+					AllowReservedPorts: ociConfig.FreeBSD.Jail.Allow.ReservedPorts,
+					AllowSuser:         ociConfig.FreeBSD.Jail.Allow.Suser,
+				}
+			}
 		}
 
 		j, err := jail.Create(jailcfg)

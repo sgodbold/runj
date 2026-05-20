@@ -596,6 +596,54 @@ func TestCreateParamsIovec(t *testing.T) {
 			VNet: "disable",
 		},
 		err: errors.New(`jail: unknown VNet type "disable"`),
+	}, {
+		name: "allow-params",
+		config: CreateParams{
+			Name: "allowparams",
+			Root: "/tmp/test/allow/params",
+			Allow: &CreateAllowParams{
+				AllowSetHostname:   true,
+				AllowRawSockets:    true,
+				AllowChFlags:       true,
+				AllowMount:         []string{"nullfs", "tmpfs", "noprocfs"},
+				AllowQuotas:        true,
+				AllowSocketAf:      false,
+				AllowMlock:         false,
+				AllowReservedPorts: false,
+				AllowSuser:         false,
+			},
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("allowparams\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/allow/params\x00"),
+		}, {
+			name: "persist\x00",
+		}, {
+			name: "allow.set_hostname\x00",
+		}, {
+			name: "allow.raw_sockets\x00",
+		}, {
+			name: "allow.chflags\x00",
+		}, {
+			name: "allow.mount.nullfs\x00",
+		}, {
+			name: "allow.mount.tmpfs\x00",
+		}, {
+			name: "allow.mount.noprocfs\x00",
+		}, {
+			name: "allow.quotas\x00",
+		}, {
+			name: "allow.nosocket_af\x00",
+		}, {
+			name: "allow.nomlock\x00",
+		}, {
+			name: "allow.noreserved_ports\x00",
+		}, {
+			name: "allow.nosuser\x00",
+		}},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

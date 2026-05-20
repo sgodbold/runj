@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/netip"
 	"strconv"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -163,6 +164,18 @@ func netIPIovec(name string, value []netip.Addr) ([]syscall.Iovec, error) {
 		bytes = append(bytes, addr.AsSlice()...)
 	}
 	return makeIovec(n, &bytes[0], len(bytes)), nil
+}
+
+func boolIovec(name string, value bool) ([]syscall.Iovec, error) {
+	if value {
+		return nilIovec(name)
+	}
+
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		return nilIovec(name[:i+1] + "no" + name[i+1:])
+	}
+
+	return nilIovec("no" + name)
 }
 
 func nilIovec(name string) ([]syscall.Iovec, error) {
