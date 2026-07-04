@@ -75,29 +75,35 @@ func _main() (int, error) {
 	command := os.Args[3]
 	argv := os.Args[4:]
 
-	if err := setupConsole(); err != nil {
+	// Load the process configuration up front: the console size is applied to
+	// the terminal set up below, and the user and working directory are applied
+	// after attaching to the jail.  The configuration lives in the container's
+	// state directory on the host filesystem, which is no longer reachable once
+	// Attach chroots us into the jail root.  See
+	// docs/entrypoint-process-config.md for why this is read here rather than
+	// passed as an argument or environment variable.
+	process, err := loadProcess(jid, fifoPath == skipExecFifo)
+	if err != nil {
 		return 2, err
+	}
+
+	var consoleSize *runtimespec.Box
+	if process != nil {
+		consoleSize = process.ConsoleSize
+	}
+	if err := setupConsole(consoleSize); err != nil {
+		return 3, err
 	}
 
 	if fifoPath != skipExecFifo {
 		// Block until `runj start` is invoked
 		fifofd, err := unix.Open(fifoPath, unix.O_WRONLY|unix.O_CLOEXEC, 0)
 		if err != nil {
-			return 3, fmt.Errorf("failed to open fifo: %w", err)
+			return 4, fmt.Errorf("failed to open fifo: %w", err)
 		}
 		if _, err := unix.Write(fifofd, []byte("0")); err != nil {
-			return 4, fmt.Errorf("failed to write to fifo: %w", err)
+			return 5, fmt.Errorf("failed to write to fifo: %w", err)
 		}
-	}
-
-	// Load the process configuration before attaching to the jail: it lives in
-	// the container's state directory on the host filesystem, which is no
-	// longer reachable once Attach chroots us into the jail root.  See
-	// docs/entrypoint-process-config.md for why this is read here rather than
-	// passed as an argument or environment variable.
-	process, err := loadProcess(jid, fifoPath == skipExecFifo)
-	if err != nil {
-		return 5, err
 	}
 
 	j, err := jail.FromName(jid)
@@ -203,7 +209,12 @@ func loadProcess(jid string, secondary bool) (*runtimespec.Process, error) {
 	return config.Process, nil
 }
 
-func setupConsole() error {
+// setupConsole allocates a pty for the container process when a console socket
+// was provided (i.e. process.terminal is true) and sends its master end back
+// over that socket.  consoleSize, when set, gives the pty's window size; it is
+// ignored when there is no console socket, matching the spec requirement to
+// ignore consoleSize when terminal is false.
+func setupConsole(consoleSize *runtimespec.Box) error {
 	socketFdArg := os.Getenv(consoleSocketEnv)
 	if socketFdArg == "" {
 		return nil
@@ -222,6 +233,17 @@ func setupConsole() error {
 		return err
 	}
 	defer pty.Close()
+
+	// Resize before sending the master and wiring the slave to the process's
+	// stdio, so both ends carry the configured size before the process starts.
+	if consoleSize != nil {
+		if err := pty.Resize(console.WinSize{
+			Height: uint16(consoleSize.Height),
+			Width:  uint16(consoleSize.Width),
+		}); err != nil {
+			return fmt.Errorf("console: resize: %w", err)
+		}
+	}
 
 	if err := SendFd(socket, pty.Name(), pty.Fd()); err != nil {
 		return err

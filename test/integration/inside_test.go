@@ -172,6 +172,19 @@ func TestCwd(t *testing.T) {
 	fmt.Println(wd)
 }
 
+// TestConsoleSize reports the window size of the process's controlling
+// terminal.  When the jail is created with process.terminal true and a
+// process.consoleSize, runj-entrypoint resizes the console pty before wiring its
+// slave to this process's stdio, so the size read here reflects the configured
+// consoleSize.
+func TestConsoleSize(t *testing.T) {
+	ws, err := unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
+	assert.NoError(t, err, "failed to get window size")
+	if err == nil {
+		fmt.Printf("winsize rows=%d cols=%d\n", ws.Row, ws.Col)
+	}
+}
+
 func TestUser(t *testing.T) {
 	fmt.Printf("uid=%d\n", os.Getuid())
 	fmt.Printf("gid=%d\n", os.Getgid())
