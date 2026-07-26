@@ -180,6 +180,7 @@ written`)
 			jailcfg.EnforceStatfs = ociConfig.FreeBSD.Jail.EnforceStatfs
 			jailcfg.SysVMsg = string(ociConfig.FreeBSD.Jail.SysVMsg)
 			jailcfg.SysVSem = string(ociConfig.FreeBSD.Jail.SysVSem)
+			jailcfg.SysVShm = string(ociConfig.FreeBSD.Jail.SysVShm)
 		}
 
 		j, err := jail.Create(jailcfg)

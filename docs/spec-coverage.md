@@ -70,7 +70,7 @@ cannot apply a configured property; closing that gap is itself an item below.
 * [ ] `jail.interface` - interface for `ip4Addr`/`ip6Addr`
 * [x] `jail.sysvmsg` - SystemV IPC message queue sharing
 * [x] `jail.sysvsem` - SystemV IPC semaphore sharing
-* [ ] `jail.sysvshm` - SystemV IPC shared memory sharing
+* [x] `jail.sysvshm` - SystemV IPC shared memory sharing
 * [x] `jail.enforceStatfs` - mount visibility
 
 ## Resource limits

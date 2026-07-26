@@ -61,3 +61,19 @@ func TestJailSysVSem(t *testing.T) {
 func TestJailSysVSemDenied(t *testing.T) {
 	runSysVProbe(t, "integ-test-sysvsem-denied", "^TestSysVSemaphoreDenied$", nil)
 }
+
+// TestJailSysVShm creates a jail with sysvshm=new and confirms a process inside
+// it can create a SysV shared memory segment, which a jail cannot do by
+// default.
+func TestJailSysVShm(t *testing.T) {
+	runSysVProbe(t, "integ-test-sysvshm", "^TestSysVShmem$",
+		&runtimespec.FreeBSDJail{SysVShm: runtimespec.FreeBSDShareNew})
+}
+
+// TestJailSysVShmDenied creates a jail without sysvshm (defaulting to disable)
+// and confirms a process inside it cannot create a SysV shared memory segment.
+// Paired with TestJailSysVShm, it proves the sysvshm parameter is what grants
+// access.
+func TestJailSysVShmDenied(t *testing.T) {
+	runSysVProbe(t, "integ-test-sysvshm-denied", "^TestSysVShmemDenied$", nil)
+}

@@ -137,6 +137,27 @@ func TestSysVSemaphoreDenied(t *testing.T) {
 	assert.NotZero(t, errno, "semget should fail when sysvsem is disabled")
 }
 
+// TestSysVShmem creates a SysV shared memory segment via shmget(2).  A jail can
+// do this only when sysvshm is enabled (new or inherit); it is disabled by
+// default.
+func TestSysVShmem(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_SHMGET, uintptr(ipcPrivate), uintptr(os.Getpagesize()), uintptr(ipcCreat|0o600))
+	require.Zero(t, errno, "shmget should succeed when sysvshm is enabled: %v", errno)
+	unix.Syscall(unix.SYS_SHMCTL, id, uintptr(ipcRmid), 0)
+}
+
+// TestSysVShmemDenied confirms shmget(2) fails when sysvshm is disabled, which
+// is a jail's default.  Paired with TestSysVShmem, it establishes that the
+// sysvshm parameter is what grants access rather than the host permitting SysV
+// IPC unconditionally.
+func TestSysVShmemDenied(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_SHMGET, uintptr(ipcPrivate), uintptr(os.Getpagesize()), uintptr(ipcCreat|0o600))
+	if errno == 0 {
+		unix.Syscall(unix.SYS_SHMCTL, id, uintptr(ipcRmid), 0)
+	}
+	assert.NotZero(t, errno, "shmget should fail when sysvshm is disabled")
+}
+
 func TestLocalhostHTTPHello(t *testing.T) {
 	port := os.Getenv("TEST_PORT")
 	requestURL := fmt.Sprintf("http://127.0.0.1:%s/hello", port)

@@ -26,6 +26,7 @@ type CreateParams struct {
 	EnforceStatfs *int
 	SysVMsg       string
 	SysVSem       string
+	SysVShm       string
 }
 
 func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
@@ -226,6 +227,25 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 			return nil, err
 		}
 		iovec = append(iovec, sysvsemio...)
+	}
+
+	if c.SysVShm != "" {
+		var sysvshm int32
+		switch c.SysVShm {
+		case "disable":
+			sysvshm = 0
+		case "new":
+			sysvshm = 1
+		case "inherit":
+			sysvshm = 2
+		default:
+			return nil, fmt.Errorf("jail: unknown SysVShm type %q", c.SysVShm)
+		}
+		sysvshmio, err := int32Iovec("sysvshm", sysvshm)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, sysvshmio...)
 	}
 
 	persist, err := nilIovec("persist")
