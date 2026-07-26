@@ -4,6 +4,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.sbk.wtf/runj/demo"
 	"go.sbk.wtf/runj/internal/util"
+	"go.sbk.wtf/runj/state"
 )
 
 const (
@@ -552,4 +555,163 @@ func runExitingJail(t *testing.T, id string, spec runtimespec.Spec, wait time.Du
 		return nil, nil, fmt.Errorf("read stderr file: %w", err)
 	}
 	return stdoutBytes, stderrBytes, nil
+}
+
+// runningJail is a started jail that secondary processes can be exec'd into.
+// It complements runExitingJail: runExitingJail drives a jail whose init
+// process embeds the test and exits, whereas runningJail keeps a blocking init
+// process alive so that runj extension exec can be exercised.  The jail is
+// killed and deleted on cleanup.
+type runningJail struct {
+	id     string
+	bundle string
+	root   string
+}
+
+// startSimpleRunningJail sets up a bundle whose init process blocks, creates and
+// starts the jail, and waits for it to report the running status.  It is the
+// running-jail analogue of setupSimpleExitingJail.  The jail is killed and
+// deleted, and its bundle removed, via t.Cleanup.
+func startSimpleRunningJail(t *testing.T, id string) *runningJail {
+	t.Helper()
+	root := t.TempDir()
+
+	s, err := os.Stat("bin/integ-inside")
+	require.NoError(t, err, "stat bin/integ-inside")
+	err = util.CopyFile("bin/integ-inside", filepath.Join(root, "integ-inside"), s.Mode())
+	require.NoError(t, err, "copy inside binary")
+
+	spec := runtimespec.Spec{
+		Root: &runtimespec.Root{Path: root},
+		Process: &runtimespec.Process{
+			Args: []string{"/integ-inside", "-test.run", "TestBlock"},
+		},
+	}
+
+	name := strings.ReplaceAll(t.Name(), "/", "-")
+	bundle, err := os.MkdirTemp("", "runj-integ-test-"+name+"-"+id)
+	require.NoError(t, err, "create bundle dir")
+
+	configJSON, err := json.Marshal(spec)
+	require.NoError(t, err, "marshal config")
+	err = os.WriteFile(filepath.Join(bundle, "config.json"), configJSON, 0644)
+	require.NoError(t, err, "write config")
+
+	j := &runningJail{id: id, bundle: bundle, root: root}
+	// Remove any jail and state left behind by a previous run that failed
+	// before cleanup, otherwise runj create fails on the existing state.
+	if _, err := os.Stat(state.Dir(id)); err == nil {
+		forceStop(id)
+	}
+	t.Cleanup(func() { j.cleanup(t) })
+
+	// runj create starts the init runj-entrypoint, which blocks on the exec
+	// fifo until runj start.  Wire the init's stdio to files for debugging;
+	// cleanup reads them back on failure.
+	stdout, err := os.Create(filepath.Join(bundle, "stdout"))
+	require.NoError(t, err, "create stdout file")
+	stderr, err := os.Create(filepath.Join(bundle, "stderr"))
+	require.NoError(t, err, "create stderr file")
+
+	create := exec.Command("runj", "create", id, bundle)
+	create.Stdin = nil
+	create.Stdout = stdout
+	create.Stderr = stderr
+	createErr := create.Run()
+	// The init runj-entrypoint has inherited its own copies of these fds and
+	// writes through them for the jail's lifetime, so the harness releases its
+	// handles now; the on-disk files remain for cleanup to read.
+	stdout.Close()
+	stderr.Close()
+	require.NoError(t, createErr, "runj create")
+	require.NoError(t, exec.Command("runj", "start", id).Run(), "runj start")
+
+	require.NoError(t, waitForStatus(id, "running", 5*time.Second), "wait for running")
+	return j
+}
+
+// exec runs runj extension exec of process in the running jail and returns the
+// process's stdout and stderr.
+func (j *runningJail) exec(t *testing.T, process runtimespec.Process) ([]byte, []byte, error) {
+	t.Helper()
+	processJSON, err := json.Marshal(process)
+	require.NoError(t, err, "marshal process")
+	processPath := filepath.Join(j.bundle, "process.json")
+	require.NoError(t, os.WriteFile(processPath, processJSON, 0644), "write process.json")
+
+	cmd := exec.Command("runj", "extension", "exec", j.id, "-p", processPath)
+	cmd.Stdin = nil
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	return stdout.Bytes(), stderr.Bytes(), err
+}
+
+// cleanup stops and deletes the jail and removes the bundle.
+func (j *runningJail) cleanup(t *testing.T) {
+	forceStop(j.id)
+	if t.Failed() {
+		t.Logf("preserving bundle %s", j.bundle)
+		if stderr, err := os.ReadFile(filepath.Join(j.bundle, "stderr")); err == nil {
+			t.Logf("init stderr: %s", stderr)
+		}
+		return
+	}
+	os.RemoveAll(j.bundle)
+}
+
+// forceStop signals the jail's init process from the host, waits for the jail
+// to report stopped, and deletes it.  Teardown does not use runj kill: runj
+// kill signals via jexec(8) and kill(1) inside the jail, and this harness keeps
+// a minimal rootfs with no kill(1) (a documented limitation; see
+// docs/security.md).  Stopping the jail from the host keeps the harness focused
+// on exec rather than depending on that path.  If runj delete still fails, the
+// jail is destroyed and its state removed directly.
+func forceStop(id string) {
+	if pid := statePID(id); pid > 0 {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+	}
+	_ = waitForStatus(id, "stopped", 5*time.Second)
+	if err := exec.Command("runj", "delete", id).Run(); err != nil {
+		exec.Command("jail", "-r", id).Run()
+		os.RemoveAll(state.Dir(id))
+	}
+}
+
+// statePID returns the primary process id runj reports for a container, or 0 if
+// it cannot be determined.
+func statePID(id string) int {
+	out, err := exec.Command("runj", "state", id).Output()
+	if err != nil {
+		return 0
+	}
+	var st struct {
+		PID int `json:"pid"`
+	}
+	if json.Unmarshal(out, &st) != nil {
+		return 0
+	}
+	return st.PID
+}
+
+// waitForStatus polls runj state until the container reports the desired status
+// or the timeout elapses.
+func waitForStatus(id, status string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		out, err := exec.Command("runj", "state", id).Output()
+		if err == nil {
+			var st struct {
+				Status string `json:"status"`
+			}
+			if json.Unmarshal(out, &st) == nil && st.Status == status {
+				return nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for %q to be %q", id, status)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }

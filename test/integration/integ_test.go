@@ -348,3 +348,21 @@ func TestJailDomainname(t *testing.T) {
 		t.Log("STDOUT:", string(stdout))
 	}
 }
+
+func TestJailExec(t *testing.T) {
+	j := startSimpleRunningJail(t, "integ-test-exec")
+
+	stdout, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestHello"},
+	})
+	assert.NoError(t, err)
+	assert.Empty(t, stderr, "exec stderr should be empty")
+	assert.Contains(t, string(stdout), "Hello println!", "exec output should contain greeting")
+	lines := strings.Split(string(stdout), "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "stdout should have at least two lines")
+	assert.Equal(t, "PASS", lines[len(lines)-2], "exec process should pass")
+	if t.Failed() {
+		t.Log("STDOUT:", string(stdout))
+		t.Log("STDERR:", string(stderr))
+	}
+}

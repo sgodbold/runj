@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,12 @@ const (
 func TestHello(t *testing.T) {
 	fmt.Println("Hello println!")
 	t.Log("Hello t.Log!")
+}
+
+// TestBlock keeps the init process alive so that a running jail can be exec'd
+// into.  The harness kills the jail when the test is done.
+func TestBlock(t *testing.T) {
+	time.Sleep(time.Hour)
 }
 
 func TestEnv(t *testing.T) {
