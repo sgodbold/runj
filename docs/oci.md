@@ -55,6 +55,10 @@ struct:
   `disable` (no access, the default), `new` (a private message-queue namespace
   visible only within the jail), and `inherit` (share the host's namespace).
   Equivalent to the `sysvmsg` field described in the `jail(8)` manual page.
+* `sysvsem` (string) - SystemV IPC semaphore sharing.  Valid options are
+  `disable` (no access, the default), `new` (a private semaphore namespace
+  visible only within the jail), and `inherit` (share the host's namespace).
+  Equivalent to the `sysvsem` field described in the `jail(8)` manual page.
 
 For both IPv4 and IPv6, runj exposes only the address-family mode and the
 address list.  Other `jail(8)` sub-parameters — such as `ip6.saddrsel` and
@@ -92,7 +96,8 @@ An example embedded in `config.json`:
       "vnet": "new",
       "vnetInterfaces": ["epair0b"],
       "enforceStatfs": 1,
-      "sysvmsg": "new"
+      "sysvmsg": "new",
+      "sysvsem": "new"
     }
   }
 }

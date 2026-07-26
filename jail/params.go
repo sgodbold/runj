@@ -25,6 +25,7 @@ type CreateParams struct {
 	// kernel default.
 	EnforceStatfs *int
 	SysVMsg       string
+	SysVSem       string
 }
 
 func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
@@ -206,6 +207,25 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 			return nil, err
 		}
 		iovec = append(iovec, sysvmsgio...)
+	}
+
+	if c.SysVSem != "" {
+		var sysvsem int32
+		switch c.SysVSem {
+		case "disable":
+			sysvsem = 0
+		case "new":
+			sysvsem = 1
+		case "inherit":
+			sysvsem = 2
+		default:
+			return nil, fmt.Errorf("jail: unknown SysVSem type %q", c.SysVSem)
+		}
+		sysvsemio, err := int32Iovec("sysvsem", sysvsem)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, sysvsemio...)
 	}
 
 	persist, err := nilIovec("persist")

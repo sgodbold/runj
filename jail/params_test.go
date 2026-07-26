@@ -427,6 +427,70 @@ func TestCreateParamsIovec(t *testing.T) {
 		},
 		err: errors.New(`jail: unknown SysVMsg type "foobar"`),
 	}, {
+		name: "sysvsem-disable",
+		config: CreateParams{
+			Name:    "sysvsem",
+			Root:    "/tmp/test/sysvsem/root",
+			SysVSem: "disable",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvsem\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvsem/root\x00"),
+		}, {
+			name: "sysvsem\x00",
+			val:  []byte{0, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvsem-new",
+		config: CreateParams{
+			Name:    "sysvsem",
+			Root:    "/tmp/test/sysvsem/root",
+			SysVSem: "new",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvsem\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvsem/root\x00"),
+		}, {
+			name: "sysvsem\x00",
+			val:  []byte{1, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvsem-inherit",
+		config: CreateParams{
+			Name:    "sysvsem",
+			Root:    "/tmp/test/sysvsem/root",
+			SysVSem: "inherit",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvsem\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvsem/root\x00"),
+		}, {
+			name: "sysvsem\x00",
+			val:  []byte{2, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvsem-invalid",
+		config: CreateParams{
+			Name:    "sysvsem-invalid",
+			SysVSem: "foobar",
+		},
+		err: errors.New(`jail: unknown SysVSem type "foobar"`),
+	}, {
 		name: "ip4.addr-invalid",
 		config: CreateParams{
 			Name:    "ip4.addr-invalid",

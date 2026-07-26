@@ -47,3 +47,17 @@ func TestJailSysVMsg(t *testing.T) {
 func TestJailSysVMsgDenied(t *testing.T) {
 	runSysVProbe(t, "integ-test-sysvmsg-denied", "^TestSysVMsgQueueDenied$", nil)
 }
+
+// TestJailSysVSem creates a jail with sysvsem=new and confirms a process inside
+// it can create a SysV semaphore set, which a jail cannot do by default.
+func TestJailSysVSem(t *testing.T) {
+	runSysVProbe(t, "integ-test-sysvsem", "^TestSysVSemaphore$",
+		&runtimespec.FreeBSDJail{SysVSem: runtimespec.FreeBSDShareNew})
+}
+
+// TestJailSysVSemDenied creates a jail without sysvsem (defaulting to disable)
+// and confirms a process inside it cannot create a SysV semaphore set.  Paired
+// with TestJailSysVSem, it proves the sysvsem parameter is what grants access.
+func TestJailSysVSemDenied(t *testing.T) {
+	runSysVProbe(t, "integ-test-sysvsem-denied", "^TestSysVSemaphoreDenied$", nil)
+}

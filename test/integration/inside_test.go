@@ -116,6 +116,27 @@ func TestSysVMsgQueueDenied(t *testing.T) {
 	assert.NotZero(t, errno, "msgget should fail when sysvmsg is disabled")
 }
 
+// TestSysVSemaphore creates a SysV semaphore set via semget(2).  A jail can do
+// this only when sysvsem is enabled (new or inherit); it is disabled by
+// default.
+func TestSysVSemaphore(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_SEMGET, uintptr(ipcPrivate), 1, uintptr(ipcCreat|0o600))
+	require.Zero(t, errno, "semget should succeed when sysvsem is enabled: %v", errno)
+	unix.Syscall6(unix.SYS___SEMCTL, id, 0, uintptr(ipcRmid), 0, 0, 0)
+}
+
+// TestSysVSemaphoreDenied confirms semget(2) fails when sysvsem is disabled,
+// which is a jail's default.  Paired with TestSysVSemaphore, it establishes
+// that the sysvsem parameter is what grants access rather than the host
+// permitting SysV IPC unconditionally.
+func TestSysVSemaphoreDenied(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_SEMGET, uintptr(ipcPrivate), 1, uintptr(ipcCreat|0o600))
+	if errno == 0 {
+		unix.Syscall6(unix.SYS___SEMCTL, id, 0, uintptr(ipcRmid), 0, 0, 0)
+	}
+	assert.NotZero(t, errno, "semget should fail when sysvsem is disabled")
+}
+
 func TestLocalhostHTTPHello(t *testing.T) {
 	port := os.Getenv("TEST_PORT")
 	requestURL := fmt.Sprintf("http://127.0.0.1:%s/hello", port)
