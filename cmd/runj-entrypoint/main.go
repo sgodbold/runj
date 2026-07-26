@@ -22,6 +22,14 @@ extension exec` is used directly.
 This program exec(2)s to into the final target program.  The sequence of
 exec(2)` preserves the PID so that it can be the target of a future invocation
 of `runj kill`.
+
+Process attributes that must be applied from inside the jail (currently the
+working directory; in the future the user, umask, rlimits, and so on) are not
+passed on this program's command line or environment.  Instead this program
+reads them back from the container's state directory: from the persisted
+config.json for the jail's init process, or from a per-pid file written by
+`runj exec` for a secondary process.  See docs/entrypoint-process-config.md for
+the rationale.
 */
 package main
 
@@ -34,8 +42,10 @@ import (
 	"syscall"
 
 	"go.sbk.wtf/runj/jail"
+	"go.sbk.wtf/runj/oci"
 
 	"github.com/containerd/console"
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
 
@@ -80,33 +90,76 @@ func _main() (int, error) {
 		}
 	}
 
-	j, err := jail.FromName(jid)
+	// Load the process configuration before attaching to the jail: it lives in
+	// the container's state directory on the host filesystem, which is no
+	// longer reachable once Attach chroots us into the jail root.  See
+	// docs/entrypoint-process-config.md for why this is read here rather than
+	// passed as an argument or environment variable.
+	process, err := loadProcess(jid, fifoPath == skipExecFifo)
 	if err != nil {
 		return 5, err
+	}
+
+	j, err := jail.FromName(jid)
+	if err != nil {
+		return 6, err
 	}
 
 	// attach places us inside the jail and implicitly does a chroot
 	err = j.Attach()
 	if err != nil {
-		return 6, err
+		return 7, err
 	}
 
-	// change to the jail's root
-	err = os.Chdir("/")
-	if err != nil {
-		return 7, err
+	// change to the process's working directory, resolved relative to the
+	// jail's root by the chroot that Attach performed.  An empty or absent cwd
+	// defaults to the jail root.
+	cwd := "/"
+	if process != nil && process.Cwd != "" {
+		cwd = process.Cwd
+	}
+	if err := os.Chdir(cwd); err != nil {
+		return 8, fmt.Errorf("failed to chdir to %q: %w", cwd, err)
 	}
 
 	// unix.Exec requires the full path to the supplied command
 	cmdpath, err := exec.LookPath(command)
 	if err != nil {
-		return 8, err
+		return 9, err
 	}
 	// call unix.Exec (which is execve(2)) to replace this process with the command
 	if err := unix.Exec(cmdpath, append([]string{command}, argv...), unix.Environ()); err != nil {
-		return 9, fmt.Errorf("failed to exec: %w", err)
+		return 10, fmt.Errorf("failed to exec: %w", err)
 	}
 	return 0, nil
+}
+
+// loadProcess returns the configuration for the process this entrypoint will
+// run.  For the jail's init process the configuration is read from the
+// persisted config.json; for a secondary process started by `runj exec` it is
+// read from a per-pid file that runj wrote before exec(2)ing into us (keyed by
+// our pid, which the exec preserved).  Reading the configuration here, rather
+// than receiving it through runj-entrypoint's argument or environment contract,
+// keeps that contract stable across runj/runj-entrypoint version skew and
+// scales to the other process.* fields without new wiring.  See
+// docs/entrypoint-process-config.md.
+func loadProcess(jid string, secondary bool) (*runtimespec.Process, error) {
+	if secondary {
+		pid := os.Getpid()
+		process, err := oci.LoadProcess(jid, pid)
+		if err != nil {
+			return nil, err
+		}
+		// We have consumed the file; remove it while the host filesystem is
+		// still reachable (before Attach chroots us).
+		oci.RemoveProcess(jid, pid)
+		return process, nil
+	}
+	config, err := oci.LoadConfig(jid)
+	if err != nil {
+		return nil, err
+	}
+	return config.Process, nil
 }
 
 func setupConsole() error {

@@ -2,6 +2,7 @@ package oci
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -67,6 +68,76 @@ func LoadConfig(id string) (*runtimespec.Spec, error) {
 		merge(config, freebsd)
 	}
 	return config, nil
+}
+
+// processFileName returns the name of the file used to persist the process
+// configuration for a secondary (exec'd) process, keyed by the pid of the
+// runj-entrypoint that will run it.  See StoreProcess for why this is keyed by
+// pid and docs/entrypoint-process-config.md for the overall design.
+func processFileName(pid int) string {
+	return fmt.Sprintf("process.%d.json", pid)
+}
+
+// StoreProcess persists the configuration for a secondary process (one started
+// by `runj exec` rather than the jail's init process) to the container's state
+// directory.
+//
+// Unlike the init process, whose configuration is part of the persisted
+// config.json, a secondary process is transient and per-invocation, so its
+// configuration cannot be read back from config.json.  runj-entrypoint runs
+// inside the jail and needs the process configuration (cwd, and in the future
+// user/umask/rlimits/...) after it has chroot'd, so the configuration must be
+// handed to it out-of-band.  Rather than widen runj-entrypoint's argument or
+// environment contract (which would break across version skew; see the design
+// doc), runj writes the configuration here and runj-entrypoint reads it back
+// with LoadProcess.
+//
+// The file is keyed by pid: `runj exec` exec(2)s into runj-entrypoint, which
+// preserves the pid, so runj-entrypoint can locate its own file with getpid(2)
+// without anything extra being passed on the wire.  Concurrent execs use
+// distinct pids and therefore distinct files.
+func StoreProcess(id string, pid int, process *runtimespec.Process) error {
+	data, err := json.Marshal(process)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(state.Dir(id), processFileName(pid)), data, 0600)
+}
+
+// LoadProcess loads the configuration for a secondary process previously
+// persisted by StoreProcess.
+func LoadProcess(id string, pid int) (*runtimespec.Process, error) {
+	data, err := os.ReadFile(filepath.Join(state.Dir(id), processFileName(pid)))
+	if err != nil {
+		return nil, err
+	}
+	process := &runtimespec.Process{}
+	if err := json.Unmarshal(data, process); err != nil {
+		return nil, err
+	}
+	return process, nil
+}
+
+// RemoveProcess removes the persisted configuration for a secondary process.
+// Any files not removed here (e.g. if runj-entrypoint dies before consuming
+// its file) are cleaned up when the container's state directory is removed on
+// delete.
+func RemoveProcess(id string, pid int) error {
+	return os.Remove(filepath.Join(state.Dir(id), processFileName(pid)))
+}
+
+// ValidateProcess checks the process fields runj applies from inside the jail.
+// The OCI runtime spec requires process.cwd to be an absolute path; runj treats
+// an empty cwd as the jail root but rejects a relative one, which would resolve
+// against an unspecified directory.
+func ValidateProcess(process *runtimespec.Process) error {
+	if process == nil {
+		return nil
+	}
+	if process.Cwd != "" && !filepath.IsAbs(process.Cwd) {
+		return fmt.Errorf("process.cwd must be an absolute path, got %q", process.Cwd)
+	}
+	return nil
 }
 
 // merge processes an existing spec and additional FreeBSD section to merge them

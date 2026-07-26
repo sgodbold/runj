@@ -82,6 +82,9 @@ the console's pseudoterminal`)
 			process = *ociConfig.Process
 			process.Args = args[1:]
 		}
+		if err := oci.ValidateProcess(&process); err != nil {
+			return err
+		}
 		// console socket validation
 		if process.Terminal {
 			if *consoleSocket == "" {
@@ -99,7 +102,7 @@ the console's pseudoterminal`)
 		cmd.SilenceErrors = true
 		// Setup and start the "runj-entrypoint" helper program in order to
 		// get the container STDIO hooked up properly.
-		return jail.ExecEntrypoint(id, process.Args, process.Env, *consoleSocket)
+		return jail.ExecEntrypoint(id, &process, *consoleSocket)
 	}
 	return execCmd
 }

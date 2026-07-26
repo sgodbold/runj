@@ -12,8 +12,10 @@ import (
 	"strconv"
 	"syscall"
 
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 
+	"go.sbk.wtf/runj/oci"
 	"go.sbk.wtf/runj/state"
 )
 
@@ -37,6 +39,10 @@ const (
 // as soon as STDIO is configured.
 //
 // Note: this API is unstable; expect it to change.
+// The init process's configuration (cwd, and in the future
+// user/umask/rlimits/...) is not passed here: runj-entrypoint reads it back
+// from the persisted config.json once it is inside the jail.  See
+// docs/entrypoint-process-config.md.
 func SetupEntrypoint(id string, init bool, argv []string, env []string, consoleSocketPath string) (*exec.Cmd, error) {
 	path := execSkipFifo
 	if init {
@@ -76,11 +82,19 @@ func SetupEntrypoint(id string, init bool, argv []string, env []string, consoleS
 	return cmd, cmd.Start()
 }
 
-// ExecEntrypoint execs a runj-entrypoint process in order to start processes
-// inside the jail.
+// ExecEntrypoint execs a runj-entrypoint process in order to start a secondary
+// process inside the jail.
+//
+// The process's configuration (cwd, and in the future user/umask/rlimits/...)
+// is persisted to the state directory and read back by runj-entrypoint once it
+// is inside the jail, rather than being passed on runj-entrypoint's argument or
+// environment contract.  Because this function exec(2)s into runj-entrypoint,
+// the pid is preserved, so runj-entrypoint can find the file with getpid(2).
+// See docs/entrypoint-process-config.md for the rationale.
 //
 // Note: this API is unstable; expect it to change.
-func ExecEntrypoint(id string, argv []string, env []string, consoleSocketPath string) error {
+func ExecEntrypoint(id string, process *runtimespec.Process, consoleSocketPath string) error {
+	env := process.Env
 	// the caller of runj will handle receiving the console master
 	if consoleSocketPath != "" {
 		conn, err := net.Dial("unix", consoleSocketPath)
@@ -105,8 +119,18 @@ func ExecEntrypoint(id string, argv []string, env []string, consoleSocketPath st
 	if err != nil {
 		return err
 	}
-	args := append([]string{"runj-entrypoint", id, execSkipFifo}, argv...)
-	return unix.Exec(path, args, env)
+	// Persist the process configuration keyed by this pid, which is preserved
+	// across the exec(2) below so runj-entrypoint can read it back.
+	pid := os.Getpid()
+	if err := oci.StoreProcess(id, pid, process); err != nil {
+		return err
+	}
+	args := append([]string{"runj-entrypoint", id, execSkipFifo}, process.Args...)
+	err = unix.Exec(path, args, env)
+	// unix.Exec only returns on failure; clean up the file we just wrote since
+	// no runj-entrypoint will consume it.
+	oci.RemoveProcess(id, pid)
+	return err
 }
 
 // CleanupEntrypoint sends a SIGTERM to the PID recorded in the state file.

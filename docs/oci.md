@@ -198,6 +198,16 @@ socket passed as `--console-socket` (with `pkg/process/init.go:Create`),
 receiving the control device (with `socket.ReceiveMaster`), then copying bytes
 to and from the device.
 
+## Working directory (`process.cwd`)
+
+The spec marks `process.cwd` REQUIRED and requires an absolute path.  runj
+applies it inside the jail, after `jail.Attach` chroots into the jail root, so
+the path resolves relative to that root.  runj treats an absent or empty `cwd`
+as `/` (the jail root) rather than rejecting the config; runc, by contrast,
+rejects a config whose `cwd` is empty.  See
+`docs/entrypoint-process-config.md` for how the value reaches the process that
+applies it.
+
 
 # `start`
 

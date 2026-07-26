@@ -35,6 +35,15 @@ func Dir(id string) string {
 	return filepath.Join(stateDir, id)
 }
 
+// SetDir overrides the state directory and returns a function that restores the
+// previous value.  It is intended for tests that need an isolated, writable
+// state directory.
+func SetDir(dir string) func() {
+	prev := stateDir
+	stateDir = dir
+	return func() { stateDir = prev }
+}
+
 // Remove removes the state for a container
 func Remove(id string) error {
 	return os.RemoveAll(Dir(id))

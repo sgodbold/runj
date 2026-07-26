@@ -165,6 +165,12 @@ func TestSysVShmemDenied(t *testing.T) {
 	assert.NotZero(t, errno, "shmget should fail when sysvshm is disabled")
 }
 
+func TestCwd(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "failed to retrieve working directory")
+	fmt.Println(wd)
+}
+
 func TestLocalhostHTTPHello(t *testing.T) {
 	port := os.Getenv("TEST_PORT")
 	requestURL := fmt.Sprintf("http://127.0.0.1:%s/hello", port)

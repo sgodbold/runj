@@ -217,6 +217,30 @@ func TestJailEnv(t *testing.T) {
 	}
 }
 
+func TestJailCwd(t *testing.T) {
+	const workdir = "/workdir"
+
+	spec := setupSimpleExitingJail(t)
+
+	err := os.Mkdir(filepath.Join(spec.Root.Path, workdir), 0755)
+	require.NoError(t, err, "create working directory")
+
+	spec.Process = &runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestCwd"},
+		Cwd:  workdir,
+	}
+
+	stdout, stderr, err := runExitingJail(t, "integ-test-cwd", spec, 500*time.Millisecond)
+	assert.NoError(t, err)
+	assertJailPass(t, stdout, stderr)
+	lines := strings.Split(string(stdout), "\n")
+	assert.Len(t, lines, 3, "should be exactly 3 lines of output")
+	assert.Equal(t, workdir, lines[0], "working directory should match process.cwd")
+	if t.Failed() {
+		t.Log("STDOUT:", string(stdout))
+	}
+}
+
 func TestJailNullMount(t *testing.T) {
 	spec := setupSimpleExitingJail(t)
 
@@ -365,4 +389,53 @@ func TestJailExec(t *testing.T) {
 		t.Log("STDOUT:", string(stdout))
 		t.Log("STDERR:", string(stderr))
 	}
+}
+
+func TestJailExecCwd(t *testing.T) {
+	const workdir = "/workdir"
+
+	j := startSimpleRunningJail(t, "integ-test-exec-cwd")
+
+	err := os.Mkdir(filepath.Join(j.root, workdir), 0755)
+	require.NoError(t, err, "create working directory")
+
+	stdout, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestCwd"},
+		Cwd:  workdir,
+	})
+	assert.NoError(t, err)
+	assert.Empty(t, stderr, "exec stderr should be empty")
+	lines := strings.Split(string(stdout), "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "stdout should have at least two lines")
+	assert.Equal(t, "PASS", lines[len(lines)-2], "exec process should pass")
+	assert.Equal(t, workdir, lines[0], "working directory should match process.cwd")
+	if t.Failed() {
+		t.Log("STDOUT:", string(stdout))
+		t.Log("STDERR:", string(stderr))
+	}
+}
+
+// TestJailExecCwdRelativeRejected confirms runj rejects a non-absolute cwd,
+// which the OCI spec requires to be absolute, before starting the process.
+func TestJailExecCwdRelativeRejected(t *testing.T) {
+	j := startSimpleRunningJail(t, "integ-test-exec-cwd-rel")
+
+	_, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestCwd"},
+		Cwd:  "workdir",
+	})
+	require.Error(t, err, "runj exec should reject a relative cwd")
+	assert.Contains(t, string(stderr), "must be an absolute path", "error should explain the rejection")
+}
+
+// TestJailExecCwdNonexistent confirms runj fails the exec when the cwd does not
+// exist inside the jail rather than silently ignoring it.
+func TestJailExecCwdNonexistent(t *testing.T) {
+	j := startSimpleRunningJail(t, "integ-test-exec-cwd-missing")
+
+	_, _, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestCwd"},
+		Cwd:  "/does-not-exist",
+	})
+	require.Error(t, err, "runj exec should fail when cwd does not exist")
 }

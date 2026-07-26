@@ -1,6 +1,7 @@
 package oci
 
 import (
+	"os"
 	"testing"
 
 	"github.com/go-faker/faker/v4"
@@ -8,6 +9,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	runjspec "go.sbk.wtf/runj/runtimespec"
+	"go.sbk.wtf/runj/state"
 )
 
 func TestMergeEmpty(t *testing.T) {
@@ -115,4 +117,53 @@ func TestMergeEmptyModePreservesExisting(t *testing.T) {
 	})
 	assert.Equal(t, string(spec.FreeBSD.Jail.Ip4), "inherit")
 	assert.DeepEqual(t, spec.FreeBSD.Jail.Ip4Addr, []string{"10.2.2.2"})
+}
+
+func TestValidateProcess(t *testing.T) {
+	tests := []struct {
+		name    string
+		process *runtimespec.Process
+		wantErr bool
+	}{
+		{"nil", nil, false},
+		{"empty cwd", &runtimespec.Process{}, false},
+		{"absolute cwd", &runtimespec.Process{Cwd: "/workdir"}, false},
+		{"relative cwd", &runtimespec.Process{Cwd: "workdir"}, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateProcess(tc.process)
+			if tc.wantErr {
+				assert.ErrorContains(t, err, "must be an absolute path")
+			} else {
+				assert.NilError(t, err)
+			}
+		})
+	}
+}
+
+func TestProcessFileName(t *testing.T) {
+	assert.Equal(t, "process.1234.json", processFileName(1234))
+}
+
+func TestStoreLoadRemoveProcess(t *testing.T) {
+	defer state.SetDir(t.TempDir())()
+	const id = "test-process"
+	assert.NilError(t, os.MkdirAll(state.Dir(id), 0755))
+
+	const pid = 4321
+	want := &runtimespec.Process{
+		Cwd:  "/workdir",
+		Args: []string{"/bin/sh", "-c", "true"},
+		Env:  []string{"FOO=bar"},
+	}
+	assert.NilError(t, StoreProcess(id, pid, want))
+
+	got, err := LoadProcess(id, pid)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, want, got)
+
+	assert.NilError(t, RemoveProcess(id, pid))
+	_, err = LoadProcess(id, pid)
+	assert.Assert(t, err != nil, "LoadProcess should fail after RemoveProcess")
 }
