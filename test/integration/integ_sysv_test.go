@@ -4,11 +4,14 @@
 package integration
 
 import (
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // runSysVProbe runs the named inside probe in a simple jail configured with the
@@ -76,4 +79,41 @@ func TestJailSysVShm(t *testing.T) {
 // access.
 func TestJailSysVShmDenied(t *testing.T) {
 	runSysVProbe(t, "integ-test-sysvshm-denied", "^TestSysVShmemDenied$", nil)
+}
+
+// TestJailSysVMode confirms each mode reaches the kernel by reading it back with
+// jls.  The msgget/semget/shmget probes cannot tell new from inherit apart (both
+// grant access), so jls is the only way to observe the exact recorded mode.
+func TestJailSysVMode(t *testing.T) {
+	params := []struct {
+		name string
+		set  func(*runtimespec.FreeBSDJail, runtimespec.FreeBSDSharing)
+	}{
+		{"sysvmsg", func(j *runtimespec.FreeBSDJail, m runtimespec.FreeBSDSharing) { j.SysVMsg = m }},
+		{"sysvsem", func(j *runtimespec.FreeBSDJail, m runtimespec.FreeBSDSharing) { j.SysVSem = m }},
+		{"sysvshm", func(j *runtimespec.FreeBSDJail, m runtimespec.FreeBSDSharing) { j.SysVShm = m }},
+	}
+	modes := []runtimespec.FreeBSDSharing{
+		runtimespec.FreeBSDShareNew,
+		runtimespec.FreeBSDShareInherit,
+	}
+	for _, p := range params {
+		for _, mode := range modes {
+			t.Run(p.name+"-"+string(mode), func(t *testing.T) {
+				jail := &runtimespec.FreeBSDJail{}
+				p.set(jail, mode)
+				spec := runtimespec.Spec{
+					Process: &runtimespec.Process{},
+					FreeBSD: &runtimespec.FreeBSD{Jail: jail},
+				}
+				id := "integ-test-" + p.name + "-" + string(mode)
+				if out, err := createJail(t, id, spec); err != nil {
+					t.Fatalf("runj create: %v: %s", err, out)
+				}
+				out, err := exec.Command("jls", "-j", id, p.name).CombinedOutput()
+				require.NoError(t, err, "jls -j %s %s: %s", id, p.name, out)
+				assert.Equal(t, string(mode), strings.TrimSpace(string(out)), "jls should report the configured mode")
+			})
+		}
+	}
 }
