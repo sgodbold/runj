@@ -18,6 +18,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// FreeBSD sys/ipc.h values, which golang.org/x/sys/unix does not export for
+// freebsd.
+const (
+	ipcPrivate = 0
+	ipcCreat   = 0o1000
+	ipcRmid    = 0
+)
+
 func TestHello(t *testing.T) {
 	fmt.Println("Hello println!")
 	t.Log("Hello t.Log!")
@@ -85,6 +93,27 @@ func TestDomainname(t *testing.T) {
 	domainname, err := unix.Sysctl("kern.domainname")
 	assert.NoError(t, err, "failed to retrieve domainname")
 	fmt.Println(domainname)
+}
+
+// TestSysVMsgQueue creates a SysV message queue via msgget(2).  A jail can do
+// this only when sysvmsg is enabled (new or inherit); it is disabled by
+// default.
+func TestSysVMsgQueue(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_MSGGET, uintptr(ipcPrivate), uintptr(ipcCreat|0o600), 0)
+	require.Zero(t, errno, "msgget should succeed when sysvmsg is enabled: %v", errno)
+	unix.Syscall(unix.SYS_MSGCTL, id, uintptr(ipcRmid), 0)
+}
+
+// TestSysVMsgQueueDenied confirms msgget(2) fails when sysvmsg is disabled,
+// which is a jail's default.  Paired with TestSysVMsgQueue, it establishes that
+// the sysvmsg parameter is what grants access rather than the host permitting
+// SysV IPC unconditionally.
+func TestSysVMsgQueueDenied(t *testing.T) {
+	id, _, errno := unix.Syscall(unix.SYS_MSGGET, uintptr(ipcPrivate), uintptr(ipcCreat|0o600), 0)
+	if errno == 0 {
+		unix.Syscall(unix.SYS_MSGCTL, id, uintptr(ipcRmid), 0)
+	}
+	assert.NotZero(t, errno, "msgget should fail when sysvmsg is disabled")
 }
 
 func TestLocalhostHTTPHello(t *testing.T) {

@@ -51,6 +51,10 @@ struct:
   kernel applies its default of `2`.  A value below `2` is also a prerequisite
   for mounting file systems inside a jail (`jail(8)`'s `allow.mount` is only
   effective when `enforce_statfs` is `0` or `1`).
+* `sysvmsg` (string) - SystemV IPC message queue sharing.  Valid options are
+  `disable` (no access, the default), `new` (a private message-queue namespace
+  visible only within the jail), and `inherit` (share the host's namespace).
+  Equivalent to the `sysvmsg` field described in the `jail(8)` manual page.
 
 For both IPv4 and IPv6, runj exposes only the address-family mode and the
 address list.  Other `jail(8)` sub-parameters — such as `ip6.saddrsel` and
@@ -62,6 +66,12 @@ sub-parameter from the spec's top-level `hostname` field.  Setting
 `host:inherit` and providing a value for `hostname` is invalid and is rejected
 by runj.  The `host.domainname`, `host.hostid`, and `host.hostuuid`
 sub-parameters are unspecified in the OCI `freebsd.jail` schema.
+
+Each SystemV IPC mode defaults to `disable` when the field is omitted, matching
+`jail(8)`: a jail cannot use the corresponding IPC primitives unless the mode is
+`new` or `inherit`.  The active mode is not visible from inside the jail; observe
+it from the host with `jls -j <jid> sysvmsg` (or `sysvsem`/`sysvshm`), or by
+attempting the IPC operation inside the jail.
 
 An example embedded in `config.json`:
 
@@ -81,7 +91,8 @@ An example embedded in `config.json`:
       "ip6Addr": ["::1"],
       "vnet": "new",
       "vnetInterfaces": ["epair0b"],
-      "enforceStatfs": 1
+      "enforceStatfs": 1,
+      "sysvmsg": "new"
     }
   }
 }

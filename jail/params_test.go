@@ -363,6 +363,70 @@ func TestCreateParamsIovec(t *testing.T) {
 			name: "persist\x00",
 		}},
 	}, {
+		name: "sysvmsg-disable",
+		config: CreateParams{
+			Name:    "sysvmsg",
+			Root:    "/tmp/test/sysvmsg/root",
+			SysVMsg: "disable",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvmsg\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvmsg/root\x00"),
+		}, {
+			name: "sysvmsg\x00",
+			val:  []byte{0, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvmsg-new",
+		config: CreateParams{
+			Name:    "sysvmsg",
+			Root:    "/tmp/test/sysvmsg/root",
+			SysVMsg: "new",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvmsg\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvmsg/root\x00"),
+		}, {
+			name: "sysvmsg\x00",
+			val:  []byte{1, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvmsg-inherit",
+		config: CreateParams{
+			Name:    "sysvmsg",
+			Root:    "/tmp/test/sysvmsg/root",
+			SysVMsg: "inherit",
+		},
+		iovec: []fakeIovec{{
+			name: "name\x00",
+			val:  []byte("sysvmsg\x00"),
+		}, {
+			name: "path\x00",
+			val:  []byte("/tmp/test/sysvmsg/root\x00"),
+		}, {
+			name: "sysvmsg\x00",
+			val:  []byte{2, 0, 0, 0},
+		}, {
+			name: "persist\x00",
+		}},
+	}, {
+		name: "sysvmsg-invalid",
+		config: CreateParams{
+			Name:    "sysvmsg-invalid",
+			SysVMsg: "foobar",
+		},
+		err: errors.New(`jail: unknown SysVMsg type "foobar"`),
+	}, {
 		name: "ip4.addr-invalid",
 		config: CreateParams{
 			Name:    "ip4.addr-invalid",

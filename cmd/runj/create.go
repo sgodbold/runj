@@ -178,6 +178,7 @@ written`)
 			jailcfg.VNet = string(ociConfig.FreeBSD.Jail.Vnet)
 			jailcfg.VNetInterface = ociConfig.FreeBSD.Jail.VnetInterfaces
 			jailcfg.EnforceStatfs = ociConfig.FreeBSD.Jail.EnforceStatfs
+			jailcfg.SysVMsg = string(ociConfig.FreeBSD.Jail.SysVMsg)
 		}
 
 		j, err := jail.Create(jailcfg)

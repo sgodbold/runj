@@ -68,7 +68,8 @@ cannot apply a configured property; closing that gap is itself an item below.
 * [ ] `jail.parent` - parent jail / shared vnet
 * [x] `jail.host` - UTS sharing mode
 * [ ] `jail.interface` - interface for `ip4Addr`/`ip6Addr`
-* [ ] `jail.sysvmsg`, `jail.sysvsem`, `jail.sysvshm` - SystemV IPC sharing
+* [x] `jail.sysvmsg` - SystemV IPC message queue sharing
+* [ ] `jail.sysvsem`, `jail.sysvshm` - SystemV IPC semaphore/memory sharing
 * [x] `jail.enforceStatfs` - mount visibility
 
 ## Resource limits

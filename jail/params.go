@@ -24,6 +24,7 @@ type CreateParams struct {
 	// EnforceStatfs controls mount visibility (0, 1, or 2); nil leaves the
 	// kernel default.
 	EnforceStatfs *int
+	SysVMsg       string
 }
 
 func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
@@ -186,6 +187,25 @@ func (c *CreateParams) iovec() ([]syscall.Iovec, error) {
 			return nil, err
 		}
 		iovec = append(iovec, esio...)
+	}
+
+	if c.SysVMsg != "" {
+		var sysvmsg int32
+		switch c.SysVMsg {
+		case "disable":
+			sysvmsg = 0
+		case "new":
+			sysvmsg = 1
+		case "inherit":
+			sysvmsg = 2
+		default:
+			return nil, fmt.Errorf("jail: unknown SysVMsg type %q", c.SysVMsg)
+		}
+		sysvmsgio, err := int32Iovec("sysvmsg", sysvmsg)
+		if err != nil {
+			return nil, err
+		}
+		iovec = append(iovec, sysvmsgio...)
 	}
 
 	persist, err := nilIovec("persist")
