@@ -117,11 +117,17 @@ func _main() (int, error) {
 		return 7, err
 	}
 
+	// apply resource limits while still privileged, so that raising a hard
+	// limit is permitted, before dropping to the configured user.
+	if err := applyRlimits(process); err != nil {
+		return 8, err
+	}
+
 	// drop to the configured user before changing directory and exec'ing, so
 	// that the working directory and program are resolved with the container
 	// process's credentials.
 	if err := applyUser(process); err != nil {
-		return 8, err
+		return 9, err
 	}
 
 	// change to the process's working directory, resolved relative to the
@@ -132,17 +138,17 @@ func _main() (int, error) {
 		cwd = process.Cwd
 	}
 	if err := os.Chdir(cwd); err != nil {
-		return 9, fmt.Errorf("failed to chdir to %q: %w", cwd, err)
+		return 10, fmt.Errorf("failed to chdir to %q: %w", cwd, err)
 	}
 
 	// unix.Exec requires the full path to the supplied command
 	cmdpath, err := exec.LookPath(command)
 	if err != nil {
-		return 10, err
+		return 11, err
 	}
 	// call unix.Exec (which is execve(2)) to replace this process with the command
 	if err := unix.Exec(cmdpath, append([]string{command}, argv...), unix.Environ()); err != nil {
-		return 11, fmt.Errorf("failed to exec: %w", err)
+		return 12, fmt.Errorf("failed to exec: %w", err)
 	}
 	return 0, nil
 }
@@ -177,6 +183,43 @@ func applyUser(process *runtimespec.Process) error {
 	}
 	if err := unix.Setuid(int(user.UID)); err != nil {
 		return fmt.Errorf("setuid %d: %w", user.UID, err)
+	}
+	return nil
+}
+
+// rlimitResources maps the OCI process.rlimits type names to the FreeBSD
+// resource constants runj supports.  Types outside this set (e.g. Linux-only
+// limits such as RLIMIT_RTPRIO) have no FreeBSD equivalent.
+var rlimitResources = map[string]int{
+	"RLIMIT_AS":      unix.RLIMIT_AS,
+	"RLIMIT_CORE":    unix.RLIMIT_CORE,
+	"RLIMIT_CPU":     unix.RLIMIT_CPU,
+	"RLIMIT_DATA":    unix.RLIMIT_DATA,
+	"RLIMIT_FSIZE":   unix.RLIMIT_FSIZE,
+	"RLIMIT_MEMLOCK": unix.RLIMIT_MEMLOCK,
+	"RLIMIT_NOFILE":  unix.RLIMIT_NOFILE,
+	"RLIMIT_NPROC":   unix.RLIMIT_NPROC,
+	"RLIMIT_RSS":     unix.RLIMIT_RSS,
+	"RLIMIT_STACK":   unix.RLIMIT_STACK,
+}
+
+// applyRlimits applies process.rlimits to the current process before it execs
+// the container program.  An unrecognized rlimit type is an error.
+func applyRlimits(process *runtimespec.Process) error {
+	if process == nil {
+		return nil
+	}
+	for _, rl := range process.Rlimits {
+		resource, ok := rlimitResources[rl.Type]
+		if !ok {
+			return fmt.Errorf("unsupported rlimit type %q", rl.Type)
+		}
+		if err := unix.Setrlimit(resource, &unix.Rlimit{
+			Cur: int64(rl.Soft),
+			Max: int64(rl.Hard),
+		}); err != nil {
+			return fmt.Errorf("setrlimit %s: %w", rl.Type, err)
+		}
 	}
 	return nil
 }

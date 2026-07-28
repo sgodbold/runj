@@ -269,6 +269,27 @@ func TestJailUser(t *testing.T) {
 	}
 }
 
+func TestJailRlimit(t *testing.T) {
+	// RLIMIT_CORE is checked rather than RLIMIT_NOFILE because the Go runtime
+	// raises the NOFILE soft limit to the hard limit at startup, which would
+	// mask the configured value.
+	spec := setupSimpleExitingJail(t)
+	spec.Process = &runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestRlimit"},
+		Rlimits: []runtimespec.POSIXRlimit{
+			{Type: "RLIMIT_CORE", Soft: 1024, Hard: 2048},
+		},
+	}
+
+	stdout, stderr, err := runExitingJail(t, "integ-test-rlimit", spec, 500*time.Millisecond)
+	assert.NoError(t, err)
+	assertJailPass(t, stdout, stderr)
+	assert.Contains(t, string(stdout), "core soft=1024 hard=2048", "RLIMIT_CORE should match process.rlimits")
+	if t.Failed() {
+		t.Log("STDOUT:", string(stdout))
+	}
+}
+
 func TestJailNullMount(t *testing.T) {
 	spec := setupSimpleExitingJail(t)
 
@@ -514,4 +535,22 @@ func TestJailExecUserCwdPermission(t *testing.T) {
 	})
 	require.Error(t, err, "runj exec should fail to enter a root-only cwd as the unprivileged user")
 	assert.Contains(t, string(stderr), "permission denied", "chdir should fail with a permission error")
+}
+
+func TestJailExecRlimit(t *testing.T) {
+	j := startSimpleRunningJail(t, "integ-test-exec-rlimit")
+
+	stdout, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestRlimit"},
+		Rlimits: []runtimespec.POSIXRlimit{
+			{Type: "RLIMIT_CORE", Soft: 1024, Hard: 2048},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Empty(t, stderr, "exec stderr should be empty")
+	assert.Contains(t, string(stdout), "core soft=1024 hard=2048", "RLIMIT_CORE should match process.rlimits")
+	if t.Failed() {
+		t.Log("STDOUT:", string(stdout))
+		t.Log("STDERR:", string(stderr))
+	}
 }

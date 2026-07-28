@@ -26,8 +26,9 @@ cannot apply a configured property; closing that gap is itself an item below.
 * [x] `process.terminal`
 * [x] `process.user` (uid, gid, umask, additionalGids)
 * [x] `process.cwd`
-* [ ] `process.rlimits` - tagged `linux,solaris,zos` in the spec, but
-  `setrlimit(2)` applies on FreeBSD
+* [x] `process.rlimits` - tagged `linux,solaris,zos` in the spec, but
+  `setrlimit(2)` applies on FreeBSD.  See [oci.md](oci.md) for the supported
+  `RLIMIT_*` types and how unsupported types are handled.
 * [x] `process.consoleSize`
 
 ## Root

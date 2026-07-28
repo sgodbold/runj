@@ -185,6 +185,13 @@ func TestConsoleSize(t *testing.T) {
 	}
 }
 
+func TestRlimit(t *testing.T) {
+	var rl unix.Rlimit
+	err := unix.Getrlimit(unix.RLIMIT_CORE, &rl)
+	assert.NoError(t, err, "failed to retrieve RLIMIT_CORE")
+	fmt.Printf("core soft=%d hard=%d\n", rl.Cur, rl.Max)
+}
+
 func TestUser(t *testing.T) {
 	fmt.Printf("uid=%d\n", os.Getuid())
 	fmt.Printf("gid=%d\n", os.Getgid())

@@ -158,6 +158,30 @@ expose the `freebsd.jail.host` sharing mode, so a jail cannot both inherit the
 host's UTS information and set `hostname` or `domainname`; in `jail(8)` terms
 `host=inherit` conflicts with `host.hostname`/`host.domainname`.
 
+# Process
+
+## `process.rlimits`
+
+The spec tags `process.rlimits` `linux,solaris,zos`, but FreeBSD also supports
+`setrlimit(2)`.  `runj-entrypoint` calls `setrlimit(2)` while privileged (before
+dropping to `process.user`), so raising a hard limit is permitted, then execs
+the container program.
+
+runj supports the OCI rlimit type names that have a FreeBSD resource constant:
+`RLIMIT_AS`, `RLIMIT_CORE`, `RLIMIT_CPU`, `RLIMIT_DATA`, `RLIMIT_FSIZE`,
+`RLIMIT_MEMLOCK`, `RLIMIT_NOFILE`, `RLIMIT_NPROC`, `RLIMIT_RSS`, and
+`RLIMIT_STACK`.  Linux-only types such as `RLIMIT_RTPRIO` or
+`RLIMIT_SIGPENDING` have no FreeBSD equivalent so runj returns an error.
+The type-to-constant mapping lives in `rlimitResources` in
+`cmd/runj-entrypoint/main.go`.
+
+`rlim_t` is signed on FreeBSD but the spec represents the limits as `uint64`.
+Limits of 2^63 or greater convert to a negative `rlim_t`, and `setrlimit(2)`
+stores any negative limit as `RLIM_INFINITY` (`0x7fffffffffffffff`).
+
+runj passes the soft (`Cur`) and hard (`Max`) values to `setrlimit(2)` and
+surfaces any error it returns.
+
 # `create`
 
 The `create` command is documented [in the
