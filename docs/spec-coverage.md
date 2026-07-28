@@ -24,8 +24,7 @@ cannot apply a configured property; closing that gap is itself an item below.
 * [x] `process.args`
 * [x] `process.env`
 * [x] `process.terminal`
-* [ ] `process.user` (uid, gid, umask, additionalGids) - the process runs as
-  whoever invoked runj
+* [x] `process.user` (uid, gid, umask, additionalGids)
 * [x] `process.cwd`
 * [ ] `process.rlimits` - tagged `linux,solaris,zos` in the spec, but
   `setrlimit(2)` applies on FreeBSD

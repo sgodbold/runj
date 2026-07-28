@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 	"time"
 
@@ -169,6 +170,17 @@ func TestCwd(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "failed to retrieve working directory")
 	fmt.Println(wd)
+}
+
+func TestUser(t *testing.T) {
+	fmt.Printf("uid=%d\n", os.Getuid())
+	fmt.Printf("gid=%d\n", os.Getgid())
+	groups, err := os.Getgroups()
+	assert.NoError(t, err, "failed to retrieve groups")
+	fmt.Printf("groups=%v\n", groups)
+	old := syscall.Umask(0)
+	syscall.Umask(old)
+	fmt.Printf("umask=%04o\n", old)
 }
 
 func TestLocalhostHTTPHello(t *testing.T) {

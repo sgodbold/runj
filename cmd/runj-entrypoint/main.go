@@ -111,6 +111,13 @@ func _main() (int, error) {
 		return 7, err
 	}
 
+	// drop to the configured user before changing directory and exec'ing, so
+	// that the working directory and program are resolved with the container
+	// process's credentials.
+	if err := applyUser(process); err != nil {
+		return 8, err
+	}
+
 	// change to the process's working directory, resolved relative to the
 	// jail's root by the chroot that Attach performed.  An empty or absent cwd
 	// defaults to the jail root.
@@ -119,19 +126,53 @@ func _main() (int, error) {
 		cwd = process.Cwd
 	}
 	if err := os.Chdir(cwd); err != nil {
-		return 8, fmt.Errorf("failed to chdir to %q: %w", cwd, err)
+		return 9, fmt.Errorf("failed to chdir to %q: %w", cwd, err)
 	}
 
 	// unix.Exec requires the full path to the supplied command
 	cmdpath, err := exec.LookPath(command)
 	if err != nil {
-		return 9, err
+		return 10, err
 	}
 	// call unix.Exec (which is execve(2)) to replace this process with the command
 	if err := unix.Exec(cmdpath, append([]string{command}, argv...), unix.Environ()); err != nil {
-		return 10, fmt.Errorf("failed to exec: %w", err)
+		return 11, fmt.Errorf("failed to exec: %w", err)
 	}
 	return 0, nil
+}
+
+// applyUser applies process.user (umask, additionalGids, gid, uid) to the
+// current process before it execs the container program.  The group list and
+// gid are set before the uid, because dropping the uid removes the privilege to
+// set them.  An omitted user deserializes to the zero-valued User and is
+// applied the same as an explicit uid 0 / gid 0: the process runs as root with
+// no supplementary groups other than gid 0.
+func applyUser(process *runtimespec.Process) error {
+	if process == nil {
+		return nil
+	}
+	user := process.User
+	if user.Umask != nil {
+		unix.Umask(int(*user.Umask))
+	}
+	// On FreeBSD the first entry of the group list is the effective gid, and
+	// setgroups sets the whole list, so the gid leads the list and the
+	// additionalGids follow it as supplementary groups.
+	gids := make([]int, 0, len(user.AdditionalGids)+1)
+	gids = append(gids, int(user.GID))
+	for _, gid := range user.AdditionalGids {
+		gids = append(gids, int(gid))
+	}
+	if err := unix.Setgroups(gids); err != nil {
+		return fmt.Errorf("setgroups %v: %w", gids, err)
+	}
+	if err := unix.Setgid(int(user.GID)); err != nil {
+		return fmt.Errorf("setgid %d: %w", user.GID, err)
+	}
+	if err := unix.Setuid(int(user.UID)); err != nil {
+		return fmt.Errorf("setuid %d: %w", user.UID, err)
+	}
+	return nil
 }
 
 // loadProcess returns the configuration for the process this entrypoint will

@@ -241,6 +241,34 @@ func TestJailCwd(t *testing.T) {
 	}
 }
 
+func TestJailUser(t *testing.T) {
+	var umask uint32 = 0o027
+
+	spec := setupSimpleExitingJail(t)
+	spec.Process = &runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestUser"},
+		User: runtimespec.User{
+			UID:            1000,
+			GID:            1000,
+			Umask:          &umask,
+			AdditionalGids: []uint32{2000, 3000},
+		},
+	}
+
+	stdout, stderr, err := runExitingJail(t, "integ-test-user", spec, 500*time.Millisecond)
+	assert.NoError(t, err)
+	assertJailPass(t, stdout, stderr)
+	out := string(stdout)
+	assert.Contains(t, out, "uid=1000", "uid should match process.user.uid")
+	assert.Contains(t, out, "gid=1000", "gid should match process.user.gid")
+	assert.Contains(t, out, "umask=0027", "umask should match process.user.umask")
+	assert.Contains(t, out, "2000", "groups should include additional gid 2000")
+	assert.Contains(t, out, "3000", "groups should include additional gid 3000")
+	if t.Failed() {
+		t.Log("STDOUT:", out)
+	}
+}
+
 func TestJailNullMount(t *testing.T) {
 	spec := setupSimpleExitingJail(t)
 
@@ -438,4 +466,52 @@ func TestJailExecCwdNonexistent(t *testing.T) {
 		Cwd:  "/does-not-exist",
 	})
 	require.Error(t, err, "runj exec should fail when cwd does not exist")
+}
+
+func TestJailExecUser(t *testing.T) {
+	var umask uint32 = 0o027
+
+	j := startSimpleRunningJail(t, "integ-test-exec-user")
+
+	stdout, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestUser"},
+		User: runtimespec.User{
+			UID:            1000,
+			GID:            1000,
+			Umask:          &umask,
+			AdditionalGids: []uint32{2000, 3000},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Empty(t, stderr, "exec stderr should be empty")
+	out := string(stdout)
+	assert.Contains(t, out, "uid=1000", "uid should match process.user.uid")
+	assert.Contains(t, out, "gid=1000", "gid should match process.user.gid")
+	assert.Contains(t, out, "umask=0027", "umask should match process.user.umask")
+	assert.Contains(t, out, "2000", "groups should include additional gid 2000")
+	assert.Contains(t, out, "3000", "groups should include additional gid 3000")
+	if t.Failed() {
+		t.Log("STDOUT:", out)
+		t.Log("STDERR:", string(stderr))
+	}
+}
+
+// TestJailExecUserCwdPermission confirms runj-entrypoint applies process.user
+// before changing to process.cwd: the cwd is a directory only root may enter,
+// so the chdir fails once the process has dropped to the unprivileged user.
+func TestJailExecUserCwdPermission(t *testing.T) {
+	const rootOnlyDir = "/rootonly"
+
+	j := startSimpleRunningJail(t, "integ-test-exec-user-cwd")
+
+	err := os.Mkdir(filepath.Join(j.root, rootOnlyDir), 0700)
+	require.NoError(t, err, "create root-only working directory")
+
+	_, stderr, err := j.exec(t, runtimespec.Process{
+		Args: []string{"/integ-inside", "-test.run", "TestCwd"},
+		Cwd:  rootOnlyDir,
+		User: runtimespec.User{UID: 1000, GID: 1000},
+	})
+	require.Error(t, err, "runj exec should fail to enter a root-only cwd as the unprivileged user")
+	assert.Contains(t, string(stderr), "permission denied", "chdir should fail with a permission error")
 }
